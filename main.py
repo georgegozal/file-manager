@@ -1,12 +1,13 @@
 from app import App
+import os
 
 
 if __name__ == "__main__":
     app = App()
-    app.title("File Manager")
+    app.title(f"{os.environ.get('USER')} - File Manager")
 
-    window_width = 600
-    window_height = 500
+    window_width = 850
+    window_height = 650
 
     # Get the screen width and height
     screen_width = app.winfo_screenwidth()
