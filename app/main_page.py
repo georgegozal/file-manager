@@ -20,7 +20,7 @@ class MainPage(Frame):
         self.top_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
         self.top_frame.grid_columnconfigure(2, weight=1)
 
-        self.back_btn = Button(self.top_frame, text="⇦")
+        self.back_btn = Button(self.top_frame, text="⇦", command=self.go_back)
         self.back_btn.grid(row=0, column=0, padx=(0, 5))
 
         self.home_btn = Button(self.top_frame, text="⌂")
@@ -28,7 +28,7 @@ class MainPage(Frame):
 
         self.current_path = Entry(self.top_frame, width=90, textvariable=self.current_dir)
         self.current_path.grid(row=0, column=2, sticky='ew')
-        # self.current_path.bind('<Return>', self.path_changed)  
+        self.current_path.bind('<Return>', self.path_changed)  
 
 
     def show_sidebar(self):
@@ -111,6 +111,17 @@ class MainPage(Frame):
         for item in _list:
             file = File(path, item)
 
+
+    def go_back(self):
+        pass
+
+    def path_changed(self, event=None):
+        path = self.current_dir.get()
+        if os.path.exists(path):
+            self.list_current_directory()
+        else:
+            self.current_dir.set(str(Path.home()))
+            self.list_current_directory()
 
 class File:
     def __init__(self, path, file):
