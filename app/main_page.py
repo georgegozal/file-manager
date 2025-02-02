@@ -5,12 +5,18 @@ import os
 from pprint import pprint
 import subprocess
 from functools import partial
-
+import re
+import stat
+import pwd
+import grp
+from datetime import datetime
 
 class MainPage(Frame):
     def __init__(self, controller):
         super().__init__(controller)
         self.controller = controller
+
+        self.show_hidden_files = False
 
         self.current_dir = str(Path.home())
         self.dirVar = StringVar()
@@ -63,11 +69,39 @@ class MainPage(Frame):
             )
             btn.pack(fill='x', padx=(5), pady=(0, 0))
         
+        self.canvas = Canvas(self)
+        self.scrollbar = Scrollbar(self, orient=VERTICAL, command=self.canvas.yview)
+        
         # Create Window for listing files
-        self.right_frame = Frame(self, bg='white', width=680, height=570)
+        self.right_frame = Frame(self.canvas, bg='white')
+        # self.right_frame.pack_propagate(False)
         self.right_frame.pack(side=LEFT)
 
+
+        self.right_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window(
+            (0, 0),
+            window=self.right_frame,
+            anchor="nw",
+            width=680,  # Set the width of the frame inside the canvas
+            height=970  # Set the height of the frame inside the canvas
+            )
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill=BOTH, expand=True)
+        self.scrollbar.pack(side=RIGHT, fill=Y)
+        print(self.right_frame.winfo_width(), self.right_frame.winfo_height())
+        self.list_directory()
+
     def path_changed(self, var, path=None):
+        current_path = self.dirVar.get()
+        print("path changed", type(current_path), current_path)
         if path:
             print(path)
             if path == 'Trash':
@@ -90,7 +124,9 @@ class MainPage(Frame):
         files = os.scandir(self.dirVar.get())
         for file in files:
             file = File(file)
-        
+            if not self.show_hidden_files and file.is_hidden:
+                continue
+                
             file_frame = Frame(self.right_frame, bd=2, relief="groove", padx=10, pady=5, bg="lightgray")
             file_frame.grid(row=row, column=column, padx=5, pady=5, sticky="nsew")
             file_frame.bind("<Button-1>", lambda event, current_file=file: self.left_click(env=event, file=current_file))
@@ -113,12 +149,16 @@ class MainPage(Frame):
             self.right_frame.grid_columnconfigure(i, weight=1, uniform="equal")
 
     def left_click(self, env, file):
-        print("left_click", file)
-        
+        print(file)
+        print("left_click", file.name)
+
+        if file.is_dir:
+            return self.path_changed(None)
+
         # Use xdg-open to open the file with the default application
         try:
             # subprocess.run(['xdg-open', file.path], check=True)
-            subprocess.run(['vlc', file.path])
+            subprocess.run(['xdg-open', file.path])
         except subprocess.CalledProcessError as e:
             print(f"Error opening file {file.path}: {e}")
 
@@ -140,6 +180,15 @@ class File:
         self.is_file = self.file.is_file()
         self.is_dir = self.file.is_dir()
         self.is_symlink = self.file.is_symlink()
+        self.extension = None
+        self.is_hidden = True if re.search('^\.', self.name) else False
+
+        if self.is_file:
+            try:
+                patern = "\.[a-zA-Z0-9]+$"
+                self.extension = re.search(patern, self.name).group()
+            except AttributeError:
+                pass
 
     def set_file_size(self):
         kilobytes = self.file.stat().st_size / 1024
@@ -150,3 +199,19 @@ class File:
                 return {'size': round(gigabytes, 2), 'unit': 'gig'}
             return {'size': round(megabytes, 2), 'unit': 'mb'}
         return {'size': round(kilobytes, 2), 'unit': 'kb'}
+
+    def __str__(self):
+        # Get file stats
+        file_stats = os.stat(self.file.path)
+
+        # File permissions (e.g., -rw-r--r--)
+        permissions = stat.filemode(file_stats.st_mode)
+
+        # Owner and group names
+        owner = pwd.getpwuid(file_stats.st_uid).pw_name
+        group = grp.getgrgid(file_stats.st_gid).gr_name
+
+        # Last modification time
+        modification_time = datetime.fromtimestamp(file_stats.st_mtime).strftime('%b %d %H:%M')
+
+        return f"{permissions} {owner} {group} {self.size['size']} {self.size['unit']} {modification_time} {self.file.name}"
