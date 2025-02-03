@@ -18,9 +18,9 @@ class MainPage(Frame):
 
         self.show_hidden_files = False
 
-        self.current_dir = str(Path.home())
+        self.home_dir = str(Path.home())
         self.dirVar = StringVar()
-        self.dirVar.set(self.current_dir)
+        self.dirVar.set(self.home_dir)
 
         self.build_page()
 
@@ -65,7 +65,7 @@ class MainPage(Frame):
                 activebackground='#e0e0e0',
                 pady=5,
                 width=10,
-                command=lambda p=address: self.path_changed(var=None, path=p)
+                command=lambda p=address: self.path_changed(var=None, dir_name=p)
             )
             btn.pack(fill='x', padx=(5), pady=(0, 0))
         
@@ -76,7 +76,6 @@ class MainPage(Frame):
         self.right_frame = Frame(self.canvas, bg='white')
         # self.right_frame.pack_propagate(False)
         self.right_frame.pack(side=LEFT)
-
 
         self.right_frame.bind(
             "<Configure>",
@@ -90,7 +89,7 @@ class MainPage(Frame):
             window=self.right_frame,
             anchor="nw",
             width=680,  # Set the width of the frame inside the canvas
-            height=970  # Set the height of the frame inside the canvas
+            # height=970  # Set the height of the frame inside the canvas
             )
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
@@ -99,24 +98,28 @@ class MainPage(Frame):
         print(self.right_frame.winfo_width(), self.right_frame.winfo_height())
         self.list_directory()
 
-    def path_changed(self, var, path=None):
+    def path_changed(self, var, dir_name=None, path=None):
         current_path = self.dirVar.get()
         print("path changed", type(current_path), current_path)
-        if path:
-            print(path)
-            if path == 'Trash':
-                self.dirVar.set('~/.local/share/Trash/files')
+        if dir_name:
+            print(dir_name)
+            if dir_name == 'Trash':
+                self.dirVar.set('/home/george/.local/share/Trash/files')
             else:
-                self.dirVar.set(str(Path.home() / path))
-        if path == 'Trash' or os.path.exists(self.dirVar.get()):
-            self.current_dir = self.dirVar.get()
+                self.dirVar.set(str(Path.home() / dir_name))
+                # self.dirVar.set(str(path))
+        elif path:
+            print("path changed", type(current_path), current_path)
+            if os.path.exists(path):
+                self.dirVar.set(path)
         else:
-            self.entry_path.delete(0, END)
-            self.dirVar.set(self.current_dir)
+            self.dirVar.set(current_path)
 
         return self.list_directory()
 
     def list_directory(self):
+        self.clear_window()
+
         # Create and arrange file names in a grid (horizontal + vertical)
         row, column = 0, 0
         max_columns = 3
@@ -153,7 +156,7 @@ class MainPage(Frame):
         print("left_click", file.name)
 
         if file.is_dir:
-            return self.path_changed(None)
+            return self.path_changed(None, path=file.path)
 
         # Use xdg-open to open the file with the default application
         try:
@@ -163,12 +166,17 @@ class MainPage(Frame):
             print(f"Error opening file {file.path}: {e}")
 
 
+    def clear_window(self):
+        # Clear all frames from self.right_frame
+        for widget in self.right_frame.winfo_children():
+            widget.destroy()
 
     def go_back(self):
         pass
 
     def home(self):
-        self.dirVar.set(str(Path.home()))
+        self.dirVar.set(self.home_dir)
+        return self.list_directory()
 
 
 class File:
