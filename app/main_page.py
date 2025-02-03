@@ -70,12 +70,18 @@ class MainPage(Frame):
             btn.pack(fill='x', padx=(5), pady=(0, 0))
         
         self.canvas = Canvas(self)
+        self.canvas.pack(side=LEFT, fill=BOTH, expand=True)
+
         self.scrollbar = Scrollbar(self, orient=VERTICAL, command=self.canvas.yview)
+        self.scrollbar.pack(side=RIGHT, fill=Y)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
         # Create Window for listing files
         self.right_frame = Frame(self.canvas, bg='white')
-        # self.right_frame.pack_propagate(False)
-        self.right_frame.pack(side=LEFT)
+        self.right_frame.configure(height=700)
+
+        self.right_frame.pack_propagate(False)
+        self.right_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
         self.right_frame.bind(
             "<Configure>",
@@ -84,18 +90,15 @@ class MainPage(Frame):
             )
         )
 
-        self.canvas.create_window(
+        self.window = self.canvas.create_window(
             (0, 0),
             window=self.right_frame,
             anchor="nw",
             width=680,  # Set the width of the frame inside the canvas
             # height=970  # Set the height of the frame inside the canvas
             )
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
         self.canvas.pack(side="left", fill=BOTH, expand=True)
-        self.scrollbar.pack(side=RIGHT, fill=Y)
-        print(self.right_frame.winfo_width(), self.right_frame.winfo_height())
         self.list_directory()
 
     def path_changed(self, var, dir_name=None, path=None):
@@ -172,7 +175,10 @@ class MainPage(Frame):
             widget.destroy()
 
     def go_back(self):
-        pass
+        current_dir = Path(str(self.dirVar.get()))
+        self.dirVar.set(current_dir.parent)
+        return self.list_directory()
+
 
     def home(self):
         self.dirVar.set(self.home_dir)
